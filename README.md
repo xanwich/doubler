@@ -3,7 +3,9 @@
 Quick python script to simply extend lengths of aiff files while preserving pitch. Wrote as an exercise when I was stuck on a transcription and wanted to slow down a song. As of now it only works with mono files. Can be used from terminal or loaded as a module.
 
 From terminal:
-'''
+
+
+```
 usage: doubler.py [-h] [-o OUTPUT] [-s SCALE] input
 
 Scale mono AIFF files
@@ -19,4 +21,4 @@ optional arguments:
   -s SCALE, --scale SCALE
                         scale of output file. Scale=2 will produce output
                         twice as long. Must be a positive integer
-'''
+```
