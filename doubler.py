@@ -3,19 +3,21 @@
 import aifc
 
 class doubler:
-	def load(self, path_in):
+	def load(self, path_in, channel=1):
 		if self.audio_in:
 			self.audio_in.close()
 		self.path_in = path_in
 		self.audio_in = aifc.open(path_in, 'r')
+		self.nchannels = self.audio_in.getnchannels()
+		self.sampwidth = self.audio_in.getsampwidth()
 
-		# just for now
-		assert self.audio_in.getnchannels() == 1
+		self.set_channel(channel)
+
+		# print(self.nchannels, self.sampwidth)
 
 	def setup(self, path_out, scale):
 		assert self.audio_in != None
-		assert type(scale) == int
-		assert scale > 0
+		self.set_scale
 
 		if self.audio_out:
 			self.audio_out.close()
@@ -27,18 +29,27 @@ class doubler:
 		self.audio_out.setparams(self.audio_in.getparams())
 		self.audio_out.setnframes(self.audio_in.getnframes()*self.scale)
 
-	def __init__(self, path_in=None, path_out=None, scale=2):
-		if scale:
-			assert type(scale) == int
-			assert scale > 0
+	def set_scale(self, scale):
+		assert type(scale) == int
+		assert scale > 0
+		self.scale = scale
 
+	def set_channel(self, channel):
+		assert type(channel) == int
+		assert channel > 0
+		self.channel = channel
+
+	def __init__(self, path_in=None, path_out=None, scale=2, channel=1):
 		self.path_in = path_in
 		self.path_out = path_out
 		self.scale = scale
 		self.audio_in = None
 		self.audio_out = None
+		self.channel = None
+		self.nchannels = None
+		self.sampwidth = None
 		if path_in:
-			self.load(path_in)
+			self.load(path_in, channel=channel)
 		if path_out and scale:
 			self.setup(path_out, scale)
 
@@ -52,14 +63,17 @@ class doubler:
 		self.audio_in.setpos(pos)
 
 	def write(self):
+		assert self.channel <= self.audio_in.getnchannels()
+
+		index = self.sampwidth*(self.channel-1)
 		buf = self.audio_in.readframes(1)
-		last = int.from_bytes(buf, byteorder='big', signed=True)
+		last = int.from_bytes(buf[index:index+self.sampwidth], byteorder='big', signed=True)
 		cross = False
 
 		for i in range(1, self.audio_in.getnframes()):
 			temp_b = self.audio_in.readframes(1)
-			temp_i = int.from_bytes(temp_b, byteorder='big', signed=True)
-			# print(temp_b)
+			temp_i = int.from_bytes(temp_b[index:index+self.sampwidth], byteorder='big', signed=True)
+			# print(temp_i)
 			if temp_i != 0 and last != 0 and abs(temp_i)/temp_i != abs(last)/last:
 				if cross:
 					# print('x')
@@ -78,13 +92,15 @@ class doubler:
 
 def main():
 	import argparse
-	parser = argparse.ArgumentParser(description='Scale mono AIFF files')
+	parser = argparse.ArgumentParser(description='Scale AIFF files')
 	parser.add_argument('input', action='store',
 		help='path to input AIFF file')
 	parser.add_argument('-o', '--output', action='store', default=None,
 		help='path to output AIFF file. Default is [input]_x[scale].aiff')
 	parser.add_argument('-s', '--scale', action='store', type=int, default=2,
 		help='scale of output file. Scale=2 will produce output twice as long. Must be a positive integer')
+	parser.add_argument('-c', '--channel', action='store', type=int, default=1,
+		help='channel from which to determine waveforms to repeat')
 
 	args = vars(parser.parse_args())
 	if not args['output']:
@@ -97,7 +113,7 @@ def main():
 			temp += '_x{}.aiff'.format(args['scale'])
 		args['output'] = temp
 
-	worker = doubler(path_in=args['input'], path_out=args['output'], scale=args['scale'])
+	worker = doubler(path_in=args['input'], path_out=args['output'], scale=args['scale'], channel=args['channel'])
 	worker.write()
 	worker.close()
 
