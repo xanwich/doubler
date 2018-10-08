@@ -59,10 +59,10 @@ class doubler:
 		for i in range(1, self.audio_in.getnframes()):
 			temp_b = self.audio_in.readframes(1)
 			temp_i = int.from_bytes(temp_b, byteorder='big', signed=True)
-			print(temp_b)
+			# print(temp_b)
 			if temp_i != 0 and last != 0 and abs(temp_i)/temp_i != abs(last)/last:
 				if cross:
-					print('x')
+					# print('x')
 					self.audio_out.writeframes(buf*self.scale)
 					buf = b''
 				cross = not cross
@@ -76,9 +76,31 @@ class doubler:
 		if self.audio_out:
 			self.audio_out.close()
 
+def main():
+	import argparse
+	parser = argparse.ArgumentParser(description='Scale mono AIFF files')
+	parser.add_argument('input', action='store',
+		help='path to input AIFF file')
+	parser.add_argument('-o', '--output', action='store', default=None,
+		help='path to output AIFF file. Default is [input]_x[scale].aiff')
+	parser.add_argument('-s', '--scale', action='store', type=int, default=2,
+		help='scale of output file. Scale=2 will produce output twice as long. Must be a positive integer')
+
+	args = vars(parser.parse_args())
+	if not args['output']:
+		temp = args['input']
+		if temp[-5:].lower() == '.aiff' or temp[-5:].lower() == '.aifc':
+			temp = temp[:-5] + '_x{}.aiff'.format(args['scale'])
+		elif temp[-4:].lower() == '.aif':
+			temp = temp[:-4] + '_x{}.aiff'.format(args['scale'])
+		else:
+			temp += '_x{}.aiff'.format(args['scale'])
+		args['output'] = temp
+
+	worker = doubler(path_in=args['input'], path_out=args['output'], scale=args['scale'])
+	worker.write()
+	worker.close()
+
+
 if __name__ == '__main__':
-	x = doubler(path_in='../../Desktop/SKR4PZ.aiff', path_out='test.aiff')
-	x.write()
-	x.close()
-
-
+	main()
